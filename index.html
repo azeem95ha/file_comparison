@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>File Comparison App</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f0f4f8;
+            color: #333;
+        }
+        .container {
+            background-color: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .file-input-container {
+            margin-bottom: 20px;
+        }
+        .file-input-label {
+            display: block;
+            margin-bottom: 5px;
+            color: #34495e;
+        }
+        .file-input {
+            display: block;
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #bdc3c7;
+            border-radius: 4px;
+            font-size: 16px;
+        }
+        .compare-button {
+            display: block;
+            width: 100%;
+            padding: 12px;
+            background-color: #3498db;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 18px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+        .compare-button:hover {
+            background-color: #2980b9;
+        }
+        #result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 4px;
+            font-weight: bold;
+            text-align: center;
+        }
+        .result-identical {
+            background-color: #2ecc71;
+            color: white;
+        }
+        .result-different {
+            background-color: #e74c3c;
+            color: white;
+        }
+        .result-neutral {
+            background-color: #f39c12;
+            color: white;
+        }
+        .hash-container {
+            margin-top: 20px;
+            background-color: #ecf0f1;
+            padding: 15px;
+            border-radius: 4px;
+        }
+        .hash-div {
+            margin-bottom: 10px;
+            word-break: break-all;
+        }
+        .hash-label {
+            font-weight: bold;
+            margin-right: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>File Comparison App</h1>
+        <div class="file-input-container">
+            <label for="file1" class="file-input-label">Select source file:</label>
+            <input type="file" id="file1" accept="*/*" class="file-input">
+        </div>
+        <div class="file-input-container">
+            <label for="file2" class="file-input-label">Select destination file:</label>
+            <input type="file" id="file2" accept="*/*" class="file-input">
+        </div>
+        <button onclick="compareFiles()" class="compare-button">Compare Files</button>
+        <div id="result"></div>
+        <div id="hash-container" class="hash-container" style="display:none;">
+            <div id="hash1" class="hash-div"><span class="hash-label">Source file  Hash:</span></div>
+            <div id="hash2" class="hash-div"><span class="hash-label">Distination file Hash:</span></div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            localStorage.clear()            
+        });
+
+        async function compareFiles() {
+            const file1 = document.getElementById('file1').files[0];
+            const file2 = document.getElementById('file2').files[0];
+
+            if (!file1 || !file2) {
+                updateResult('Please select two files to compare.', 'result-neutral');
+                return;
+            }
+
+            try {
+                const hash1 = await calculateHash(file1);
+                const hash2 = await calculateHash(file2);
+
+                let resultText;
+                let resultClass;
+                if (hash1 === hash2) {
+                    resultText = 'The files are identical.';
+                    resultClass = 'result-identical';
+                } else {
+                    resultText = 'The files are different.';
+                    resultClass = 'result-different';
+                }
+                
+                updateResult(resultText, resultClass);
+                updateHashes(hash1, hash2);
+                
+                localStorage.setItem('lastComparisonResult', resultText);
+                localStorage.setItem('lastHash1', hash1);
+                localStorage.setItem('lastHash2', hash2);
+            } catch (error) {
+                updateResult('An error occurred: ' + error.message, 'result-neutral');
+            }
+        }
+
+        function calculateHash(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    const wordArray = CryptoJS.lib.WordArray.create(event.target.result);
+                    const hash = CryptoJS.SHA256(wordArray).toString();
+                    resolve(hash);
+                };
+                reader.onerror = function(event) {
+                    reject(new Error('File reading failed'));
+                };
+                reader.readAsArrayBuffer(file);
+            });
+        }
+
+        function updateResult(text, className) {
+            const resultDiv = document.getElementById('result');
+            resultDiv.textContent = text;
+            resultDiv.className = className;
+        }
+
+        function updateHashes(hash1, hash2) {
+            document.getElementById('hash1').innerHTML = `<span class="hash-label">Source file Hash:</span> ${hash1}`;
+            document.getElementById('hash2').innerHTML = `<span class="hash-label">Destination Hash:</span> ${hash2}`;
+            document.getElementById('hash-container').style.display = 'block';
+        }
+
+        function getResultClass(text) {
+            if (text.includes('identical')) return 'result-identical';
+            if (text.includes('different')) return 'result-different';
+            return 'result-neutral';
+        }
+    </script>
+</body>
+</html>
